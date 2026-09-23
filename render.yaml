@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: learning-strategy-content-decoder
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /status
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: TRUST_PROXY_HEADERS
+        value: "1"
+      - key: ANALYSIS_RATE_LIMIT
+        value: "10"
