@@ -2,6 +2,12 @@
 
 An internal tool for the Learning Strategy team. It analyzes supplied material through the Impactful Eight and Learning 2.0 reference lenses, then produces a practical strategic readout and downloadable report.
 
+## GitHub Pages
+
+The repository includes a static GitHub Pages version. Enable Pages from the repository's **Settings → Pages** screen, select **Deploy from a branch**, then choose **main** and **/(root)**.
+
+The hosted version asks each user for an OpenAI API key. The key remains in that browser tab's memory and is cleared on reload or close; it is never committed to GitHub. Paste text or upload a supported file, then run the diagnostic. Web links work only when the source website permits browser access.
+
 ## Shared deployment
 
 The repository includes a `Dockerfile` for Cloud Run or another container host. Configure these values in the hosting service rather than committing them:
