@@ -412,31 +412,53 @@ const connectionStatus = document.getElementById('connection-status');
 let aiConfigured = false;
 
 async function browserApiRequest(path, body){
-  if(path === '/status') return {configured:Boolean(browserConnection),provider:'openai',model:browserConnection?.model || null,managed:false};
+  if(path === '/status') return {configured:Boolean(browserConnection),provider:browserConnection?.provider || null,model:browserConnection?.model || null,managed:false};
   if(path === '/configure'){
+    const provider = String(body.provider || '').trim();
     const key = String(body.key || '').trim();
-    if(body.provider !== 'openai') throw new Error('The GitHub version currently supports OpenAI.');
-    if(key.length < 10 || /\s/.test(key)) throw new Error('Enter a valid OpenAI API key.');
-    browserConnection = {key,model:String(body.model || '').trim() || 'gpt-4.1-mini'};
-    return {configured:true,provider:'openai',model:browserConnection.model,managed:false};
+    if(!['anthropic','openai'].includes(provider)) throw new Error('Choose Anthropic or OpenAI.');
+    if(key.length < 10 || /\s/.test(key)) throw new Error(`Enter a valid ${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key.`);
+    const defaultModel = provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4.1-mini';
+    browserConnection = {provider,key,model:String(body.model || '').trim() || defaultModel};
+    return {configured:true,provider,model:browserConnection.model,managed:false};
   }
   if(path !== '/analyze') throw new Error('This feature needs the local server.');
-  if(!browserConnection) throw new Error('Set up the OpenAI connection above first.');
-  const response = await fetch('https://api.openai.com/v1/chat/completions',{
+  if(!browserConnection) throw new Error('Set up the AI connection above first.');
+  const userMessage = `Title: ${body.title || ''}\n\nContent to analyze:\n${String(body.content || '').slice(0,15000)}`;
+  const isAnthropic = browserConnection.provider === 'anthropic';
+  const response = await fetch(isAnthropic ? 'https://api.anthropic.com/v1/messages' : 'https://api.openai.com/v1/chat/completions', isAnthropic ? {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':browserConnection.key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:browserConnection.model,max_tokens:3000,system:SYSTEM_PROMPT,messages:[{role:'user',content:userMessage}]})
+  } : {
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer ' + browserConnection.key},
     body:JSON.stringify({
       model:browserConnection.model,
       response_format:{type:'json_schema',json_schema:{name:'content_decoder_result',strict:true,schema:RESULT_SCHEMA}},
-      messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:`Title: ${body.title || ''}\n\nContent to analyze:\n${String(body.content || '').slice(0,15000)}`}]
+      messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:userMessage}]
     })
   });
   const payload = await response.json().catch(()=>({}));
   if(!response.ok){
-    const messages={401:'The API key was rejected.',403:'This key cannot access the selected model.',404:'The selected model is unavailable.',429:'OpenAI reported a quota or rate limit.'};
-    throw new Error(messages[response.status] || payload.error?.message || `OpenAI returned HTTP ${response.status}.`);
+    const messages={401:'The API key was rejected.',403:'This key cannot access the selected model.',404:'The selected model is unavailable.',429:`${isAnthropic ? 'Anthropic' : 'OpenAI'} reported a quota or rate limit.`};
+    throw new Error(messages[response.status] || payload.error?.message || `${isAnthropic ? 'Anthropic' : 'OpenAI'} returned HTTP ${response.status}.`);
   }
-  return JSON.parse(payload.choices[0].message.content);
+  const raw = isAnthropic
+    ? (payload.content || []).filter(block => block.type === 'text').map(block => block.text || '').join('\n')
+    : payload.choices?.[0]?.message?.content;
+  if(!raw) throw new Error('The AI provider returned an empty response.');
+  const cleaned = String(raw).trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+  try{return JSON.parse(cleaned);}catch(_){
+    const start = cleaned.indexOf('{'), end = cleaned.lastIndexOf('}');
+    if(start >= 0 && end > start) return JSON.parse(cleaned.slice(start,end + 1));
+    throw new Error('The AI provider returned invalid JSON; please try again.');
+  }
 }
 
 async function apiRequest(path, body){
@@ -494,10 +516,8 @@ document.getElementById('connection-form').addEventListener('submit', async (eve
 });
 document.getElementById('provider').addEventListener('change', () => {document.getElementById('model').value = '';});
 if(STATIC_HOST){
-  const provider = document.getElementById('provider');
-  provider.value = 'openai';
-  provider.disabled = true;
-  document.getElementById('connection-hint').textContent = 'Your key stays only in this browser tab and is sent directly to OpenAI. It is cleared when you reload or close the page. Each teammate should use their own authorized API key.';
+  document.getElementById('provider').value = 'openai';
+  document.getElementById('connection-hint').textContent = 'Your key stays only in this browser tab and is sent directly to the provider you select. It is cleared when you reload or close the page. Each teammate should use their own authorized API key.';
   urlStatus.textContent = 'Some websites block browser retrieval. If a link fails, paste the text or upload the document.';
 }
 apiRequest('/status').then(showConnection).catch(err => {connectionStatus.textContent = err.message;});

@@ -6,7 +6,7 @@ An internal tool for the Learning Strategy team. It analyzes supplied material t
 
 The repository includes a static GitHub Pages version. Enable Pages from the repository's **Settings → Pages** screen, select **Deploy from a branch**, then choose **main** and **/(root)**.
 
-The hosted version asks each user for an OpenAI API key. The key remains in that browser tab's memory and is cleared on reload or close; it is never committed to GitHub. Paste text or upload a supported file, then run the diagnostic. Web links work only when the source website permits browser access.
+The hosted version lets each user choose OpenAI or Anthropic and enter the corresponding API key. The key remains in that browser tab's memory, is sent directly to the selected provider, and is cleared on reload or close; it is never committed to GitHub. Paste text or upload a supported file, then run the diagnostic. Web links work only when the source website permits browser access.
 
 ## Shared deployment
 
@@ -58,4 +58,4 @@ The PDF export uses an A4, print-friendly report layout with a title band, execu
 
 The Learning 2.0 section is a selective strategic readout for the Learning Strategy team. It returns one primary belief, at most one distinct supporting belief, up to two strategic gaps, a tension or challenge, and one strategic implication. It closes with three practical outputs: **Say** for a defensible narrative, **Study** for an evidence question, and **Build** for a concrete product or learning-experience proposal. Evidence excerpts are checked against the submitted sample.
 
-The original file's direct browser request to Anthropic could not work without exposing a key, and browser security blocks many cross-site page fetches. This version moves both requests to the local server. AI analysis still requires a valid key and network access.
+The GitHub Pages version makes direct browser requests to the selected provider, so each user supplies a personal API key for the current tab. The local server version keeps the selected provider key outside the browser and is the safer basis for a shared internal deployment. Browser security still blocks retrieval from many third-party web pages. AI analysis requires a valid provider key and network access.

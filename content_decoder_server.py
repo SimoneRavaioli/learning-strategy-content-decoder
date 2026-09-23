@@ -30,7 +30,7 @@ class RequestLimitError(ValueError):
 
 
 def get_connection():
-    for provider, variable, default in (("anthropic", "ANTHROPIC", "claude-sonnet-4-5"), ("openai", "OPENAI", "gpt-4.1-mini")):
+    for provider, variable, default in (("anthropic", "ANTHROPIC", "claude-sonnet-4-6"), ("openai", "OPENAI", "gpt-4.1-mini")):
         if os.getenv(variable + "_API_KEY"):
             return {"provider": provider, "key": os.environ[variable + "_API_KEY"], "model": os.getenv(variable + "_MODEL", default)}
     with CONNECTION_LOCK:
@@ -62,7 +62,7 @@ def configure_connection(data):
     if not isinstance(model, str) or len(model) > 120:
         raise ValueError("Enter a valid model name")
     with CONNECTION_LOCK:
-        CONNECTION = {"provider": provider, "key": key.strip(), "model": model.strip() or ("claude-sonnet-4-5" if provider == "anthropic" else "gpt-4.1-mini")}
+        CONNECTION = {"provider": provider, "key": key.strip(), "model": model.strip() or ("claude-sonnet-4-6" if provider == "anthropic" else "gpt-4.1-mini")}
     return connection_status()
 
 
