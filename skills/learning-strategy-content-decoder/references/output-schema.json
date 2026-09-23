@@ -1,0 +1,32 @@
+{
+  "suggested_title": "A concise 5-10 word title derived from the sample",
+  "summary": "One concise sentence stating strategic relevance",
+  "impactful_eight": [
+    {
+      "pillar": "Exact Impactful Eight pillar name",
+      "why_it_matters": "One specific sentence explaining relevance or tension",
+      "key_insight": "One concrete strategic insight",
+      "evidence_excerpt": "Short verbatim excerpt from the sample"
+    }
+  ],
+  "learning_2_0": {
+    "primary_connection": {
+      "belief": "Exact Learning 2.0 belief name",
+      "why": "One specific sentence",
+      "evidence_excerpt": "Short verbatim excerpt from the sample"
+    },
+    "supporting_connection": null,
+    "strategic_gaps": [
+      {
+        "gap": "Exact Learning 2.0 gap name",
+        "insight": "How the sample changes or sharpens understanding of the gap",
+        "evidence_excerpt": "Short verbatim excerpt from the sample"
+      }
+    ],
+    "tension": "One grounded tension or 'No material tension is apparent.'",
+    "strategic_implication": "What the Learning Strategy team should take from the sample",
+    "say": "One defensible communication point",
+    "study": "One unanswered evidence question",
+    "build": "One concrete proposal"
+  }
+}

@@ -58,4 +58,12 @@ The PDF export uses an A4, print-friendly report layout with a title band, execu
 
 The Learning 2.0 section is a selective strategic readout for the Learning Strategy team. It returns one primary belief, at most one distinct supporting belief, up to two strategic gaps, a tension or challenge, and one strategic implication. It closes with three practical outputs: **Say** for a defensible narrative, **Study** for an evidence question, and **Build** for a concrete product or learning-experience proposal. Evidence excerpts are checked against the submitted sample.
 
+## Claude-compatible skill
+
+The reusable Agent Skill lives in `skills/learning-strategy-content-decoder/`. A Claude-ready upload is available at `dist/learning-strategy-content-decoder.zip`; the equivalent `.skill` package is provided for other Agent Skills-compatible hosts.
+
+In Claude.ai, enable code execution, open **Customize → Skills**, choose **Create skill → Upload a skill**, and upload the ZIP. On Team or Enterprise plans, an owner can provision the same ZIP from **Organization settings → Plugins & skills** so it is available to the whole team.
+
+The skill contains the lens definitions, selection and evidence rules, Markdown and JSON output contracts, PDF guidance, and a dependency-free validator for structured results. Its test suite covers prompt injection inside a source and an unrelated memo that should produce no forced framework matches.
+
 The GitHub Pages version makes direct browser requests to the selected provider, so each user supplies a personal API key for the current tab. The local server version keeps the selected provider key outside the browser and is the safer basis for a shared internal deployment. Browser security still blocks retrieval from many third-party web pages. AI analysis requires a valid provider key and network access.
