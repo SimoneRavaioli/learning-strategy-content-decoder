@@ -5,6 +5,7 @@ import ipaddress
 import json
 import os
 import socket
+import time
 import unicodedata
 from html.parser import HTMLParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -18,6 +19,14 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 HERE = Path(__file__).resolve().parent
 CONNECTION_LOCK = Lock()
 CONNECTION = None
+RATE_LIMIT_LOCK = Lock()
+ANALYSIS_ATTEMPTS = {}
+RATE_LIMIT_COUNT = int(os.getenv("ANALYSIS_RATE_LIMIT", "10"))
+RATE_LIMIT_WINDOW = 60 * 60
+
+
+class RequestLimitError(ValueError):
+    pass
 
 
 def get_connection():
@@ -55,6 +64,17 @@ def configure_connection(data):
     with CONNECTION_LOCK:
         CONNECTION = {"provider": provider, "key": key.strip(), "model": model.strip() or ("claude-sonnet-4-5" if provider == "anthropic" else "gpt-4.1-mini")}
     return connection_status()
+
+
+def check_analysis_rate(client_address):
+    """Apply a small per-instance, per-client guard for public deployments."""
+    now = time.time()
+    with RATE_LIMIT_LOCK:
+        attempts = [stamp for stamp in ANALYSIS_ATTEMPTS.get(client_address, []) if now - stamp < RATE_LIMIT_WINDOW]
+        if len(attempts) >= RATE_LIMIT_COUNT:
+            raise RequestLimitError("This address has reached the hourly analysis limit; try again later")
+        attempts.append(now)
+        ANALYSIS_ATTEMPTS[client_address] = attempts
 
 
 FRAMEWORKS = json.loads((HERE / "frameworks.json").read_text())
@@ -403,12 +423,18 @@ class Handler(BaseHTTPRequestHandler):
                 content = str(data.get("content", "")).strip()
                 if not content:
                     raise ValueError("Add content to analyze")
+                client_address = self.client_address[0]
+                if os.getenv("TRUST_PROXY_HEADERS") == "1":
+                    client_address = self.headers.get("X-Forwarded-For", client_address).split(",", 1)[0].strip()
+                check_analysis_rate(client_address)
                 answer = analyze(str(data.get("title", ""))[:300], content)
             else:
                 answer = {"text": fetch_url(str(data.get("url", "")))}
             self.send_json(200, answer)
         except (TimeoutError, socket.timeout):
             self.send_json(504, {"error": "The request timed out. Your sample is still here; try again."})
+        except RequestLimitError as exc:
+            self.send_json(429, {"error": str(exc)})
         except (ValueError, KeyError, IndexError, TypeError, HTTPError, URLError) as exc:
             self.send_json(400, {"error": str(exc)})
 

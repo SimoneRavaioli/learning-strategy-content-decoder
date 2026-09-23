@@ -11,6 +11,8 @@ The repository includes a `Dockerfile` for Cloud Run or another container host. 
 
 When a server-side key is present, the browser connection form is hidden and users cannot replace the centrally managed connection. Protect the service with company identity access before sharing its URL. Submitted content is sent to the selected AI provider for analysis and is not persisted by this application.
 
+Public deployments default to 10 analyses per client address per hour. Override this with `ANALYSIS_RATE_LIMIT`. Set `TRUST_PROXY_HEADERS=1` when the hosting platform supplies a trusted `X-Forwarded-For` header. Use a single instance for this lightweight in-memory guard and configure a provider spending limit.
+
 ### Cloud Run outline
 
 1. Create a private Cloud Run service from this GitHub repository.
