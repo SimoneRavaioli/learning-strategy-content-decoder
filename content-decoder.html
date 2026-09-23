@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Content Decoder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="/frameworks.js"></script>
+<style>
+  :root{
+    --bg:#0b1722;
+    --panel:#101f2c;
+    --panel-2:#0d1b26;
+    --border:#1c3244;
+    --text:#eef3f6;
+    --muted:#8fa3b0;
+    --i8:#18c2ea;
+    --l20:#eab54c;
+    --red:#e91c1c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.5;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:48px 32px 80px;}
+  header{margin-bottom:36px;border-bottom:1px solid var(--border);padding-bottom:28px;}
+  header h1{font-family:'Fraunces', serif;font-weight:500;font-size:2.4rem;margin:0 0 8px;letter-spacing:-0.01em;}
+  header p{color:var(--muted);max-width:640px;margin:0;font-size:0.98rem;}
+  .grid{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:32px;align-items:start;}
+  @media (max-width:860px){.grid{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:24px;}
+  .panel h2{font-family:'Fraunces', serif;font-weight:500;font-size:1.15rem;margin:0 0 16px;}
+  label{display:block;font-size:0.8rem;color:var(--muted);margin-bottom:6px;margin-top:16px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=password], select, textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:4px;
+    color:var(--text);font-family:'IBM Plex Sans', sans-serif;font-size:0.92rem;padding:10px 12px;resize:vertical;
+  }
+  textarea{min-height:200px;}
+  input[type=text]:focus, textarea:focus{outline:none;border-color:var(--i8);}
+  input[type=file]{
+    width:100%;font-size:0.85rem;color:var(--muted);
+    background:var(--panel-2);border:1px dashed var(--border);border-radius:4px;padding:14px 12px;
+  }
+  .tabs{display:flex;gap:6px;margin-bottom:16px;}
+  .tab-btn{
+    flex:1;background:var(--panel-2);border:1px solid var(--border);color:var(--muted);
+    padding:9px 10px;border-radius:4px;font-size:0.82rem;font-family:'IBM Plex Sans',sans-serif;cursor:pointer;
+  }
+  .tab-btn.active{background:var(--i8);color:#04222c;border-color:var(--i8);font-weight:600;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .hint{font-size:0.78rem;color:var(--muted);margin-top:8px;line-height:1.4;}
+  .fetch-row{display:flex;gap:8px;}
+  .fetch-row input{flex:1;}
+  .fetch-row button{margin-top:0;width:auto;padding:10px 16px;white-space:nowrap;}
+  .status{font-size:0.8rem;color:var(--i8);margin-top:8px;min-height:1.2em;}
+  button{
+    margin-top:18px;width:100%;background:var(--i8);color:#04222c;border:none;border-radius:4px;
+    padding:12px 16px;font-family:'IBM Plex Sans', sans-serif;font-weight:600;font-size:0.94rem;cursor:pointer;transition:opacity 0.15s;
+  }
+  button:hover{opacity:0.88;}
+  button:disabled{background:var(--border);color:var(--muted);cursor:default;}
+  .scanline{height:2px;width:0%;background:var(--i8);margin-top:14px;border-radius:2px;transition:width 1.8s linear;}
+  .scanline.active{width:96%;}
+  .error{margin-top:14px;font-size:0.85rem;color:#ff9b9b;border-left:2px solid var(--red);padding-left:10px;}
+  .idle-note{color:var(--muted);font-size:0.9rem;}
+  .rail{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 20px;}
+  .tag{font-size:0.78rem;padding:6px 12px;border-radius:20px;border:1px solid var(--border);color:var(--muted);background:transparent;transition:all 0.4s ease;}
+  .tag.i8-on{color:#04222c;background:var(--i8);border-color:var(--i8);font-weight:600;}
+  .tag.l20-on{color:#2b2109;background:var(--l20);border-color:var(--l20);font-weight:600;}
+  .section-label{font-size:0.78rem;color:var(--muted);margin:28px 0 4px;}
+  .section-label:first-child{margin-top:0;}
+  .card{
+    background:var(--panel-2);border:1px solid var(--border);border-left:3px solid var(--i8);border-radius:4px;
+    padding:16px 18px;margin-bottom:12px;opacity:0;transform:translateY(6px);animation:rise 0.5s ease forwards;
+  }
+  .card.l20{border-left-color:var(--l20);}
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
+  .card h3{font-family:'Fraunces', serif;font-weight:500;font-size:1rem;margin:0 0 8px;}
+  .card .row{font-size:0.88rem;margin-bottom:6px;}
+  .card .row span{color:var(--muted);}
+  .summary{font-size:0.95rem;color:var(--muted);margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+  .snackable{
+    font-family:'Fraunces', serif;font-size:1.3rem;font-weight:500;line-height:1.4;padding:18px 20px;
+    border:1px solid var(--l20);border-radius:4px;background:rgba(234,181,76,0.06);margin-top:14px;
+  }
+  .l20-heading{font-family:'Fraunces',serif;font-size:1.25rem;margin:30px 0 14px;}
+  .l20-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+  .l20-block{background:var(--panel-2);border:1px solid var(--border);border-top:3px solid var(--l20);border-radius:4px;padding:16px;}
+  .l20-block.primary{grid-column:1/-1;}
+  .l20-kicker{color:var(--l20);font-size:0.72rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:5px;}
+  .l20-block h3{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:500;margin:0 0 8px;}
+  .l20-block p{font-size:0.88rem;margin:0;color:var(--text);}
+  .l20-evidence{font-size:0.8rem;color:var(--muted);border-left:2px solid var(--l20);padding-left:10px;margin-top:12px;}
+  .l20-section{margin-top:20px;}
+  .l20-section h3{font-family:'Fraunces',serif;font-size:1rem;font-weight:500;margin:0 0 10px;}
+  .l20-gap-list{display:grid;gap:10px;}
+  .l20-gap{background:var(--panel-2);border:1px solid var(--border);border-radius:4px;padding:14px 16px;}
+  .l20-gap strong{display:block;color:var(--l20);font-size:0.86rem;margin-bottom:5px;}
+  .l20-gap p{font-size:0.86rem;margin:0;}
+  .strategy-box{border-left:3px solid var(--l20);padding:12px 16px;background:rgba(234,181,76,0.06);margin-top:10px;}
+  .strategy-box strong{display:block;color:var(--l20);font-size:0.74rem;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:5px;}
+  .strategy-box p{margin:0;font-size:0.9rem;}
+  .action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+  .action-card{background:var(--panel-2);border:1px solid var(--border);border-radius:4px;padding:14px;}
+  .action-card strong{display:block;color:var(--l20);font-size:0.76rem;letter-spacing:0.06em;margin-bottom:7px;}
+  .action-card p{font-size:0.84rem;margin:0;}
+  @media(max-width:700px){.l20-grid,.action-grid{grid-template-columns:1fr}.l20-block.primary{grid-column:auto;}}
+  .placeholder{display:flex;align-items:center;justify-content:center;min-height:320px;color:var(--muted);font-size:0.92rem;text-align:center;}
+
+  .references{margin-top:20px;font-size:0.85rem;color:var(--muted);}
+  .references summary{cursor:pointer;color:var(--i8);}
+  .references h2{font-size:1rem;color:var(--text);margin:20px 0 8px;}
+  .references dt{color:var(--text);margin-top:12px;font-weight:600;}
+  .references dd{margin:4px 0 0;max-width:900px;}
+  .evidence{font-size:0.82rem;color:var(--muted);border-left:2px solid var(--border);padding-left:10px;margin:12px 0 0;}
+  .results-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:4px;}
+  #download-pdf-btn{
+    margin-top:0;width:auto;background:transparent;color:var(--l20);border:1px solid var(--l20);
+    padding:8px 14px;font-size:0.82rem;font-weight:600;
+  }
+  #download-pdf-btn:hover{background:rgba(234,181,76,0.1);opacity:1;}
+  #download-pdf-btn:disabled{border-color:var(--border);color:var(--muted);cursor:default;background:transparent;}
+  #pdf-status{font-size:0.78rem;color:var(--muted);}
+  .connection{margin-bottom:24px;}
+  .connection summary{cursor:pointer;font-weight:600;}
+  .connection-grid{display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-top:16px;}
+  .connection-grid label{margin-top:0;}
+  @media(max-width:600px){.connection-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Content decoder</h1>
+    <p>Paste text, drop in a link, or upload a document, ours or someone else's, and see which Impactful Eight pillars it touches and how it reads against the Learning 2.0 rubric.</p>
+    <details class="references"><summary>Reference lenses and source pages</summary><div id="reference-lenses"></div></details>
+  </header>
+
+  <details class="panel connection" id="connection-panel" open>
+    <summary>AI connection</summary>
+    <div class="status" id="connection-status" role="status" aria-live="polite">Checking connection…</div>
+    <form id="connection-form">
+      <div class="connection-grid">
+        <div><label for="provider">AI provider</label><select id="provider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option></select></div>
+        <div><label for="api-key">API key</label><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter your provider API key" required></div>
+      </div>
+      <label for="model">Model (optional)</label><input id="model" type="text" placeholder="Leave blank for the default model" autocomplete="off">
+      <p class="hint">Your key stays in this local server’s memory until it stops. Running a diagnostic sends the sample and reference lenses to your selected AI provider. A valid API key with available API usage is required.</p>
+      <button type="submit" id="save-connection">Save connection</button>
+    </form>
+  </details>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Sample</h2>
+      <label for="title">Title / source (optional)</label>
+      <input type="text" id="title" placeholder="e.g. PISA 2025 Results, Volume I">
+
+      <label>Input method</label>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="paste">Paste text</button>
+        <button class="tab-btn" data-tab="url">Web link</button>
+        <button class="tab-btn" data-tab="file">Upload file</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-paste">
+        <div class="hint">Paste an article, brief, or excerpt directly into the box below.</div>
+      </div>
+
+      <div class="tab-panel" id="tab-url">
+        <div class="fetch-row">
+          <input type="text" id="url-input" placeholder="https://...">
+          <button id="url-fetch-btn" type="button">Fetch</button>
+        </div>
+        <div class="status" id="url-status"></div>
+        <div class="hint">For a Google Doc, use an "Anyone with the link" sharing URL, or download it as .docx / .pdf and upload it instead. Some sites block retrieval; if that happens, upload the document or paste its text.</div>
+      </div>
+
+      <div class="tab-panel" id="tab-file">
+        <input type="file" id="file-input" accept=".txt,.md,.csv,.docx,.pdf,.xlsx,.xls">
+        <div class="status" id="file-status"></div>
+        <div class="hint">Supports .txt, .md, .csv, .docx, .pdf, .xlsx, and .xls. Large files are trimmed to the first ~15,000 characters.</div>
+      </div>
+
+      <label for="content">Content (auto-filled, editable)</label>
+      <textarea id="content" placeholder="Extracted or pasted content will appear here."></textarea>
+
+      <button id="run" disabled>Set up AI connection first</button>
+      <div class="scanline" id="scanline"></div>
+      <div class="error" id="error" style="display:none;"></div>
+    </div>
+
+    <div class="panel" id="results-panel">
+      <div class="placeholder" id="placeholder">Results will appear here once you run a diagnostic.</div>
+      <div id="results" style="display:none;">
+        <div class="results-actions">
+          <span id="pdf-status"></span>
+          <button id="download-pdf-btn" type="button">Download as PDF</button>
+        </div>
+        <div class="summary" id="summary"></div>
+
+        <div class="section-label">Impactful Eight</div>
+        <div class="rail" id="i8-rail"></div>
+        <div id="i8-cards"></div>
+
+        <div class="l20-heading">Learning 2.0 strategic readout</div>
+        <div id="l20-readout"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
+const I8 = FRAMEWORKS.impactful_eight;
+const BELIEFS = FRAMEWORKS.beliefs;
+const GAPS = FRAMEWORKS.gaps;
+
+const referenceRoot = document.getElementById('reference-lenses');
+const referenceIntro = document.createElement('p');
+referenceIntro.textContent = 'Exact lens names and paraphrased definitions from your reference PDFs. Highlighting indicates relevance, not endorsement. Learning 2.0 gaps are the strategic gaps named in the vision.';
+referenceRoot.appendChild(referenceIntro);
+for(const [label, items, source] of [
+  ['Impactful Eight', I8, FRAMEWORKS.sources.impactful_eight],
+  ['Learning 2.0 — beliefs', BELIEFS, FRAMEWORKS.sources.learning_2_0],
+  ['Learning 2.0 — gaps', GAPS, FRAMEWORKS.sources.learning_2_0]
+]){
+  const heading = document.createElement('h2'); heading.textContent = label;
+  const attribution = document.createElement('p'); attribution.textContent = source.title + (source.date ? ' — ' + source.date : ' (2026 PDF)');
+  const definitions = document.createElement('dl');
+  for(const item of items){
+    const name = document.createElement('dt'); name.textContent = item.name + ' · p. ' + item.pages;
+    const definition = document.createElement('dd'); definition.textContent = item.def;
+    definitions.append(name, definition);
+  }
+  referenceRoot.append(heading, attribution, definitions);
+}
+
+function truncateText(text, max){
+  max = max || 15000;
+  if(text.length <= max) return text;
+  return text.slice(0, max) + "\n\n[Truncated to the first " + max.toLocaleString() + " characters.]";
+}
+
+// ---- Tabs ----
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabPanels = {paste: document.getElementById('tab-paste'), url: document.getElementById('tab-url'), file: document.getElementById('tab-file')};
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    Object.values(tabPanels).forEach(p => p.classList.remove('active'));
+    tabPanels[btn.dataset.tab].classList.add('active');
+  });
+});
+
+// ---- File upload extraction ----
+const fileInput = document.getElementById('file-input');
+const fileStatus = document.getElementById('file-status');
+const contentArea = document.getElementById('content');
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  if(!file) return;
+  fileStatus.textContent = 'Reading ' + file.name + '…';
+  try{
+    const text = await extractFromFile(file);
+    contentArea.value = truncateText(text);
+    fileStatus.textContent = 'Extracted ' + text.length.toLocaleString() + ' characters from ' + file.name + '.';
+  }catch(err){
+    fileStatus.textContent = err.message;
+  }
+});
+
+async function extractFromFile(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext === 'txt' || ext === 'md'){
+    return await file.text();
+  }
+  if(ext === 'csv'){
+    const raw = await file.text();
+    if(window.Papa){
+      const parsed = Papa.parse(raw, {skipEmptyLines:true});
+      return parsed.data.slice(0,500).map(r => r.join(', ')).join('\n');
+    }
+    return raw;
+  }
+  if(ext === 'docx'){
+    if(!window.mammoth) throw new Error("Word reader didn't load. Refresh and try again, or paste the text instead.");
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({arrayBuffer});
+    return result.value;
+  }
+  if(ext === 'pdf'){
+    if(!window.pdfjsLib) throw new Error("PDF reader didn't load. Refresh and try again, or paste the text instead.");
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+    let text = '';
+    const maxPages = Math.min(pdf.numPages, 40);
+    for(let i=1;i<=maxPages;i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(it => it.str).join(' ') + '\n\n';
+    }
+    if(pdf.numPages > maxPages){
+      text += '\n[Only the first ' + maxPages + ' of ' + pdf.numPages + ' pages were read.]';
+    }
+    return text;
+  }
+  if(ext === 'xlsx' || ext === 'xls'){
+    if(!window.XLSX) throw new Error("Spreadsheet reader didn't load. Refresh and try again, or export as CSV instead.");
+    const arrayBuffer = await file.arrayBuffer();
+    const wb = XLSX.read(arrayBuffer, {type:'array'});
+    const firstSheetName = wb.SheetNames[0];
+    let out = XLSX.utils.sheet_to_csv(wb.Sheets[firstSheetName]);
+    if(wb.SheetNames.length > 1){
+      out += '\n\n[Only the first sheet, "' + firstSheetName + '", was read; the file has ' + wb.SheetNames.length + ' sheets.]';
+    }
+    return out;
+  }
+  throw new Error("That file type isn't supported yet. Try .txt, .md, .csv, .docx, .pdf, .xlsx, or .xls.");
+}
+
+// ---- URL fetch ----
+const urlInput = document.getElementById('url-input');
+const urlFetchBtn = document.getElementById('url-fetch-btn');
+const urlStatus = document.getElementById('url-status');
+
+urlFetchBtn.addEventListener('click', async () => {
+  const url = urlInput.value.trim();
+  if(!url){ urlStatus.textContent = 'Add a URL first.'; return; }
+  urlStatus.textContent = 'Fetching…';
+  try{
+    const res = await fetch("/fetch-url", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({url})});
+    const payload = await res.json();
+    if(!res.ok) throw new Error(payload.error || 'fetch failed');
+    const text = (payload.text || '').trim();
+    if(!text) throw new Error('empty page');
+    contentArea.value = truncateText(text);
+    urlStatus.textContent = 'Fetched ' + text.length.toLocaleString() + ' characters. Review below, then run the diagnostic.';
+  }catch(err){
+    urlStatus.textContent = "Could not retrieve this page: " + err.message + ". Try uploading or pasting its text.";
+  }
+});
+
+// ---- Run diagnostic ----
+const runBtn = document.getElementById('run');
+const scanline = document.getElementById('scanline');
+const errorBox = document.getElementById('error');
+const placeholder = document.getElementById('placeholder');
+const results = document.getElementById('results');
+const connectionPanel = document.getElementById('connection-panel');
+const connectionStatus = document.getElementById('connection-status');
+let aiConfigured = false;
+
+async function apiRequest(path, body){
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 75000);
+  try{
+    const response = await fetch(path, {method:body ? 'POST' : 'GET',
+      headers:body ? {'Content-Type':'application/json'} : {},
+      body:body ? JSON.stringify(body) : undefined, signal:controller.signal});
+    const text = await response.text();
+    let data;
+    try{data = JSON.parse(text);}catch(_){throw new Error('The local server returned an unexpected response. Restart content_decoder_server.py and refresh this page.');}
+    if(!response.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }catch(err){
+    if(err.name === 'AbortError') throw new Error('The request timed out. Your sample is still here.');
+    if(err instanceof TypeError) throw new Error('The local server is not reachable. Start content_decoder_server.py and refresh this page.');
+    throw err;
+  }finally{clearTimeout(timeout);}
+}
+
+function showConnection(status){
+  aiConfigured = status.configured;
+  const connectionForm = document.getElementById('connection-form');
+  runBtn.disabled = !aiConfigured;
+  runBtn.textContent = aiConfigured ? 'Run diagnostic' : 'Set up AI connection first';
+  connectionStatus.textContent = aiConfigured
+    ? (status.managed ? 'Team connection: ' : 'Configured: ') + (status.provider === 'openai' ? 'OpenAI' : 'Anthropic') + ' · ' + status.model + '. Credentials will be checked when you run a diagnostic.'
+    : 'No AI service is configured. Enter an API key below to enable diagnostics.';
+  connectionForm.hidden = Boolean(status.managed);
+  if(aiConfigured){
+    document.getElementById('provider').value = status.provider;
+    document.getElementById('model').value = status.model;
+  }
+  connectionPanel.open = !aiConfigured;
+}
+
+document.getElementById('connection-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const saveButton = document.getElementById('save-connection');
+  const keyInput = document.getElementById('api-key');
+  saveButton.disabled = true;
+  connectionStatus.textContent = 'Saving connection…';
+  try{
+    const status = await apiRequest('/configure', {
+      provider:document.getElementById('provider').value,
+      key:keyInput.value.trim(), model:document.getElementById('model').value.trim()
+    });
+    keyInput.value = '';
+    showConnection(status);
+    errorBox.style.display = 'none';
+  }catch(err){connectionStatus.textContent = err.message;}
+  finally{saveButton.disabled = false;}
+});
+document.getElementById('provider').addEventListener('change', () => {document.getElementById('model').value = '';});
+apiRequest('/status').then(showConnection).catch(err => {connectionStatus.textContent = err.message;});
+
+runBtn.addEventListener('click', async () => {
+  if(!aiConfigured){connectionPanel.open = true; return;}
+  const title = document.getElementById('title').value.trim();
+  const content = contentArea.value.trim();
+
+  if(!content){
+    errorBox.style.display = 'block';
+    errorBox.textContent = 'Paste something, fetch a link, or upload a file first.';
+    return;
+  }
+  errorBox.style.display = 'none';
+  runBtn.disabled = true;
+  runBtn.textContent = 'Analyzing…';
+  scanline.classList.add('active');
+  placeholder.style.display = 'flex';
+  placeholder.textContent = 'Running the diagnostic…';
+  results.style.display = 'none';
+
+  const body = {title, content};
+
+  try{
+    const data = await apiRequest('/analyze', body);
+    const parsed = data;
+    render(parsed);
+  }catch(err){
+    errorBox.style.display = 'block';
+    errorBox.textContent = 'Analysis failed: ' + err.message;
+    if(/key|provider|model|connection/i.test(err.message)) connectionPanel.open = true;
+    placeholder.textContent = 'Results will appear here once you run a diagnostic.';
+  }finally{
+    runBtn.disabled = !aiConfigured;
+    runBtn.textContent = 'Run diagnostic';
+    setTimeout(()=>scanline.classList.remove('active'), 400);
+  }
+});
+
+// ---- Dependency-free PDF export (no CDN scripts — nothing here can be blocked by a script filter) ----
+const PDF_PAGE_W = 595.28, PDF_PAGE_H = 841.89, PDF_MARGIN = 48;
+const PDF_CONTENT_W = PDF_PAGE_W - PDF_MARGIN * 2;
+const PDF_WHITE = [1, 1, 1];
+const PDF_NAVY = [0.035, 0.086, 0.125];
+const PDF_PANEL2 = [0.953, 0.969, 0.976];
+const PDF_TEXT = [0.063, 0.114, 0.153];
+const PDF_MUTED = [0.310, 0.384, 0.427];
+const PDF_SKY = [0.027, 0.494, 0.651];
+const PDF_SKY_PALE = [0.882, 0.961, 0.980];
+const PDF_GOLD = [0.635, 0.408, 0.059];
+const PDF_GOLD_PALE = [0.988, 0.953, 0.859];
+const PDF_BORDER = [0.820, 0.855, 0.875];
+
+function pdfSanitize(str){
+  return String(str || '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/[^\x20-\x7E]/g, '');
+}
+function pdfEscape(str){
+  return str.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+function pdfCharWidth(ch, bold){
+  if(ch === ' ') return 0.278;
+  if('mMW'.includes(ch)) return bold ? 0.95 : 0.85;
+  if("iIl.,:;'|!ijt".includes(ch)) return bold ? 0.34 : 0.3;
+  if(/[A-Z]/.test(ch)) return bold ? 0.78 : 0.72;
+  if(/[0-9]/.test(ch)) return bold ? 0.6 : 0.56;
+  return bold ? 0.58 : 0.52;
+}
+function pdfTextWidth(str, size, bold){
+  let w = 0;
+  for(const ch of str) w += pdfCharWidth(ch, bold) * size;
+  return w;
+}
+function pdfWrapText(str, maxWidth, size, bold){
+  const words = str.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = '';
+  for(const word of words){
+    const test = cur ? cur + ' ' + word : word;
+    if(pdfTextWidth(test, size, bold) > maxWidth && cur){
+      lines.push(cur);
+      cur = word;
+    }else{
+      cur = test;
+    }
+  }
+  if(cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+function pdfRectOp(x, y, w, h, color){
+  const [r,g,b] = color;
+  return `${r} ${g} ${b} rg ${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f\n`;
+}
+function pdfTextOp(x, y, text, font, size, color){
+  const [r,g,b] = color;
+  const esc = pdfEscape(pdfSanitize(text));
+  return `BT /${font} ${size} Tf ${r} ${g} ${b} rg 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc}) Tj ET\n`;
+}
+
+function buildPdfContentStreams(title, dateStr, data){
+  const pages = [];
+  let content = pdfRectOp(0, 0, PDF_PAGE_W, PDF_PAGE_H, PDF_WHITE);
+  let y = PDF_PAGE_H - PDF_MARGIN;
+
+  function pageHeader(){
+    content += pdfTextOp(PDF_MARGIN, PDF_PAGE_H - 31, 'CONTENT DECODER', 'F2', 7.5, PDF_SKY);
+    content += pdfRectOp(PDF_MARGIN, PDF_PAGE_H - 39, PDF_CONTENT_W, 0.7, PDF_BORDER);
+    y = PDF_PAGE_H - 58;
+  }
+  function newPage(){
+    pages.push(content);
+    content = pdfRectOp(0, 0, PDF_PAGE_W, PDF_PAGE_H, PDF_WHITE);
+    pageHeader();
+  }
+  function ensureSpace(h){ if(y - h < PDF_MARGIN + 18) newPage(); }
+  function line(text, opts){
+    opts = opts || {};
+    const size = opts.size || 10.2, bold = !!opts.bold, color = opts.color || PDF_TEXT, gap = opts.gap || 14.2, indent = opts.indent || 0;
+    const width = opts.width || (PDF_CONTENT_W - indent);
+    const lines = pdfWrapText(pdfSanitize(text), width, size, bold);
+    lines.forEach((l) => {
+      ensureSpace(gap);
+      content += pdfTextOp(PDF_MARGIN + indent, y, l, bold ? 'F2' : 'F1', size, color);
+      y -= gap;
+    });
+    return lines.length;
+  }
+  function spacer(h){ ensureSpace(h); y -= h; }
+  function ruleLine(){ ensureSpace(11); content += pdfRectOp(PDF_MARGIN, y, PDF_CONTENT_W, 0.75, PDF_BORDER); y -= 11; }
+  function sectionHeading(text, accent){
+    ensureSpace(32);
+    content += pdfRectOp(PDF_MARGIN, y - 18, 3, 22, accent);
+    content += pdfTextOp(PDF_MARGIN + 12, y - 10, text, 'F2', 12.5, PDF_TEXT);
+    y -= 31;
+  }
+  function tagRow(names, accent, pale){
+    if(!names.length){ line('No strong match.', {size:9.5, color:PDF_MUTED}); return; }
+    let x = PDF_MARGIN;
+    const size = 8.5, padX = 8, padY = 5, gapX = 6, rowGap = 7;
+    const rowHeight = size + padY * 2;
+    const rows = names.reduce((count, name) => {
+      const w = pdfTextWidth(name, size, true) + padX * 2;
+      if(x + w > PDF_MARGIN + PDF_CONTENT_W){ count++; x = PDF_MARGIN; }
+      x += w + gapX; return count;
+    }, 1);
+    ensureSpace(rows * (rowHeight + rowGap));
+    x = PDF_MARGIN;
+    let rowY = y;
+    names.forEach((name) => {
+      const w = pdfTextWidth(name, size, true) + padX * 2;
+      if(x + w > PDF_MARGIN + PDF_CONTENT_W){
+        x = PDF_MARGIN;
+        rowY -= rowHeight + rowGap;
+      }
+      content += pdfRectOp(x, rowY - rowHeight, w, rowHeight, pale);
+      content += pdfTextOp(x + padX, rowY - rowHeight + padY + 1, name, 'F2', size, accent);
+      x += w + gapX;
+    });
+    y = rowY - rowHeight - 7;
+  }
+  function labeledParagraph(label, text, indent){
+    indent = indent || 14;
+    line(label.toUpperCase(), {size:7.4, bold:true, color:PDF_MUTED, indent, gap:10});
+    line(text, {size:9.8, color:PDF_TEXT, indent, gap:13.7});
+  }
+  function insightCard(p){
+    ensureSpace(92);
+    const top = y + 5;
+    content += pdfRectOp(PDF_MARGIN, top - 27, PDF_CONTENT_W, 27, PDF_SKY_PALE);
+    content += pdfRectOp(PDF_MARGIN, top - 27, 4, 27, PDF_SKY);
+    content += pdfTextOp(PDF_MARGIN + 15, top - 18, p.pillar, 'F2', 11.3, PDF_TEXT);
+    y = top - 40;
+    labeledParagraph('Why it matters', p.why_it_matters);
+    spacer(3);
+    labeledParagraph('Key insight', p.key_insight);
+    if(p.evidence_excerpt){
+      spacer(5);
+      const quoteLines = pdfWrapText('"' + pdfSanitize(p.evidence_excerpt) + '"', PDF_CONTENT_W - 30, 9.2, false);
+      ensureSpace(quoteLines.length * 13 + 25);
+      const quoteTop = y + 4, quoteHeight = quoteLines.length * 13 + 20;
+      content += pdfRectOp(PDF_MARGIN + 14, quoteTop - quoteHeight, PDF_CONTENT_W - 28, quoteHeight, PDF_PANEL2);
+      y = quoteTop - 14;
+      quoteLines.forEach(q => { content += pdfTextOp(PDF_MARGIN + 27, y, q, 'F1', 9.2, PDF_MUTED); y -= 13; });
+      y = quoteTop - quoteHeight - 2;
+    }
+    if(p.evidence_warning){
+      spacer(3);
+      line('Evidence excerpt needs review.', {size:8.5, bold:true, color:PDF_GOLD, indent:14, gap:12});
+    }
+    const lens = I8.find(item => item.name === p.pillar);
+    if(lens) line('Lens reference: The Impactful Eight, p. ' + lens.pages, {size:7.8, color:PDF_MUTED, indent:14, gap:11});
+    spacer(14);
+  }
+
+  content += pdfRectOp(0, PDF_PAGE_H - 185, PDF_PAGE_W, 185, PDF_NAVY);
+  content += pdfRectOp(PDF_MARGIN, PDF_PAGE_H - 66, 34, 3, PDF_SKY);
+  y = PDF_PAGE_H - 86;
+  line('CONTENT DECODER', {size:8.5, bold:true, color:PDF_SKY, gap:15});
+  line(title || 'Untitled content', {size:21, bold:true, color:PDF_WHITE, gap:27, width:PDF_CONTENT_W - 20});
+  line('Diagnostic report  |  ' + dateStr, {size:9, color:[0.745, 0.800, 0.827], gap:16});
+  y = PDF_PAGE_H - 214;
+  line('EXECUTIVE READOUT', {size:7.5, bold:true, color:PDF_SKY, gap:13});
+  if(data.summary){ line(data.summary, {size:12, bold:true, gap:17}); spacer(7); }
+  ruleLine();
+
+  const touchedNames = (data.impactful_eight || []).map((p) => p.pillar);
+  sectionHeading('Impactful Eight matches', PDF_SKY);
+  tagRow(touchedNames, PDF_SKY, PDF_SKY_PALE);
+  spacer(12);
+
+  (data.impactful_eight || []).forEach(insightCard);
+  if(!(data.impactful_eight || []).length){
+    line('No strong match for the Impactful Eight in this sample.', {size:10, color:PDF_MUTED, gap:14});
+    spacer(6);
+  }
+
+  const l20 = data.learning_2_0 || {};
+  sectionHeading('Learning 2.0 readout', PDF_GOLD);
+  const connections = [l20.primary_connection, l20.supporting_connection].filter(Boolean);
+  connections.forEach((item, index) => {
+    ensureSpace(65);
+    line(index === 0 ? 'PRIMARY CONNECTION' : 'SUPPORTING CONNECTION', {size:7.4, bold:true, color:PDF_GOLD, gap:11});
+    line(item.belief, {size:11, bold:true, gap:15});
+    line(item.why, {size:9.7, gap:13.5});
+    if(index === 0 && item.evidence_excerpt) line('"' + item.evidence_excerpt + '"', {size:8.8, color:PDF_MUTED, indent:12, gap:12.5});
+    if(item.evidence_warning) line('Evidence excerpt needs review.', {size:8.4, bold:true, color:PDF_GOLD, gap:11});
+    spacer(6);
+  });
+
+  const strategicGaps = l20.strategic_gaps || [];
+  line('STRATEGIC GAPS IMPLICATED', {size:7.5, bold:true, color:PDF_MUTED, gap:13});
+  strategicGaps.forEach(item => {
+    ensureSpace(55);
+    line(item.gap, {size:10.5, bold:true, color:PDF_GOLD, gap:14});
+    line(item.insight, {size:9.7, gap:13.5});
+    if(item.evidence_warning) line('Evidence excerpt needs review.', {size:8.4, bold:true, color:PDF_GOLD, gap:11});
+    spacer(5);
+  });
+
+  if(l20.tension){
+    ensureSpace(55);
+    line('TENSION OR CHALLENGE', {size:7.5, bold:true, color:PDF_GOLD, gap:12});
+    line(l20.tension, {size:10.3, gap:14.5});
+    spacer(5);
+  }
+
+  if(l20.strategic_implication){
+    line('STRATEGIC IMPLICATION', {size:7.5, bold:true, color:PDF_GOLD, gap:12});
+    const lines = pdfWrapText(pdfSanitize(l20.strategic_implication), PDF_CONTENT_W - 34, 11.5, true);
+    ensureSpace(lines.length * 17 + 30);
+    const boxTop = y;
+    const boxHeight = lines.length * 17 + 30;
+    content += pdfRectOp(PDF_MARGIN, boxTop - boxHeight, PDF_CONTENT_W, boxHeight, PDF_GOLD_PALE);
+    content += pdfRectOp(PDF_MARGIN, boxTop - boxHeight, 4, boxHeight, PDF_GOLD);
+    y -= 17;
+    lines.forEach((l) => {
+      content += pdfTextOp(PDF_MARGIN + 18, y, l, 'F2', 12, PDF_TEXT);
+      y -= 17;
+    });
+    y = boxTop - boxHeight - 16;
+  }
+
+  line('ACTIONS FOR LEARNING STRATEGY', {size:7.5, bold:true, color:PDF_MUTED, gap:13});
+  for(const [label, value] of [['SAY', l20.say], ['STUDY', l20.study], ['BUILD', l20.build]]){
+    if(!value) continue;
+    ensureSpace(42);
+    line(label, {size:8, bold:true, color:PDF_GOLD, gap:11});
+    line(value, {size:9.7, gap:13.5});
+    spacer(6);
+  }
+
+  pages.push(content);
+  return pages.map((page, index) => {
+    const footerY = 25;
+    return page
+      + pdfRectOp(PDF_MARGIN, footerY + 10, PDF_CONTENT_W, 0.6, PDF_BORDER)
+      + pdfTextOp(PDF_MARGIN, footerY, 'Frameworks: Impactful Eight (2026) | Learning 2.0 (Aug 2026)', 'F1', 7.2, PDF_MUTED)
+      + pdfTextOp(PDF_PAGE_W - PDF_MARGIN - 38, footerY, (index + 1) + ' / ' + pages.length, 'F1', 7.5, PDF_MUTED);
+  });
+}
+function pdfByteLength(str){
+  let n = 0;
+  for(let i=0;i<str.length;i++) n += str.charCodeAt(i) > 0xFF ? 2 : 1;
+  return n;
+}
+function assemblePdfBytes(pages){
+  const fontHelvId = 90, fontHelvBoldId = 91;
+  const catalogId = 1, pagesId = 2;
+  let nextId = 3;
+  const pageIds = [];
+  const pageObjs = [], contentObjs = [];
+
+  pages.forEach((streamText) => {
+    const pageId = nextId++; pageIds.push(pageId);
+    const contentId = nextId++;
+    contentObjs.push({id: contentId, body: `<< /Length ${pdfByteLength(streamText)} >>\nstream\n${streamText}endstream`});
+    pageObjs.push({id: pageId, body: `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PDF_PAGE_W} ${PDF_PAGE_H}] /Resources << /Font << /F1 ${fontHelvId} 0 R /F2 ${fontHelvBoldId} 0 R >> >> /Contents ${contentId} 0 R >>`});
+  });
+
+  const catalogObj = {id: catalogId, body: `<< /Type /Catalog /Pages ${pagesId} 0 R >>`};
+  const pagesObj = {id: pagesId, body: `<< /Type /Pages /Kids [${pageIds.map((id)=>id+' 0 R').join(' ')}] /Count ${pageIds.length} >>`};
+  const fontHelvObj = {id: fontHelvId, body: `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`};
+  const fontHelvBoldObj = {id: fontHelvBoldId, body: `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`};
+
+  const allObjs = [catalogObj, pagesObj, ...pageObjs, ...contentObjs, fontHelvObj, fontHelvBoldObj];
+  allObjs.sort((a,b) => a.id - b.id);
+
+  let out = '%PDF-1.4\n';
+  const offsets = {};
+  allObjs.forEach((o) => {
+    offsets[o.id] = pdfByteLength(out);
+    out += `${o.id} 0 obj\n${o.body}\nendobj\n`;
+  });
+  const xrefStart = pdfByteLength(out);
+  const maxId = Math.max(...allObjs.map((o) => o.id));
+  out += `xref\n0 ${maxId + 1}\n0000000000 65535 f \r\n`;
+  for(let i=1;i<=maxId;i++){
+    out += offsets[i] !== undefined
+      ? String(offsets[i]).padStart(10,'0') + ' 00000 n \r\n'
+      : '0000000000 00000 f \r\n';
+  }
+  out += `trailer\n<< /Size ${maxId + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+  return out;
+}
+
+let lastResult = null;
+let lastTitle = '';
+
+const downloadBtn = document.getElementById('download-pdf-btn');
+const pdfStatus = document.getElementById('pdf-status');
+
+downloadBtn.addEventListener('click', () => {
+  if(!lastResult){
+    pdfStatus.textContent = 'Nothing to export yet.';
+    return;
+  }
+  downloadBtn.disabled = true;
+  pdfStatus.textContent = 'Preparing PDF…';
+  try{
+    const dateStr = new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+    const pages = buildPdfContentStreams(lastTitle, dateStr, lastResult);
+    const pdfStr = assemblePdfBytes(pages);
+    const bytes = new Uint8Array(pdfStr.length);
+    for(let i=0;i<pdfStr.length;i++) bytes[i] = pdfStr.charCodeAt(i) & 0xFF;
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const label = (lastTitle || 'untitled-content').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'content-decoder-' + label + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    pdfStatus.textContent = 'Downloaded.';
+  }catch(err){
+    pdfStatus.textContent = 'Could not generate the PDF: ' + err.message;
+  }finally{
+    downloadBtn.disabled = false;
+    setTimeout(() => { pdfStatus.textContent = ''; }, 4000);
+  }
+});
+
+function render(data){
+  lastResult = data;
+  lastTitle = document.getElementById('title').value.trim();
+  placeholder.style.display = 'none';
+  results.style.display = 'block';
+  document.getElementById('summary').textContent = data.summary || '';
+
+  const touchedPillars = (data.impactful_eight || []).map(p => p.pillar);
+  const i8Rail = document.getElementById('i8-rail');
+  i8Rail.innerHTML = '';
+  I8.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'tag' + (touchedPillars.includes(p.name) ? ' i8-on' : '');
+    el.textContent = p.name;
+    el.title = p.def + ' (Reference p. ' + p.pages + ')';
+    i8Rail.appendChild(el);
+  });
+  const i8Cards = document.getElementById('i8-cards');
+  i8Cards.innerHTML = '';
+  (data.impactful_eight || []).forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.animationDelay = (i * 0.08) + 's';
+    const heading = document.createElement('h3');
+    heading.textContent = p.pillar || '';
+    card.appendChild(heading);
+    for(const [label, value] of [['Why it matters here: ', p.why_it_matters], ['Key insight: ', p.key_insight]]){
+      const row = document.createElement('div'); row.className = 'row';
+      const prefix = document.createElement('span'); prefix.textContent = label;
+      row.append(prefix, document.createTextNode(value || ''));
+      card.appendChild(row);
+    }
+    if(p.evidence_excerpt){
+      const evidence = document.createElement('blockquote'); evidence.className = 'evidence';
+      evidence.textContent = 'Sample evidence: “' + p.evidence_excerpt + '”'; card.appendChild(evidence);
+    }
+    if(p.evidence_warning){
+      const warning = document.createElement('div'); warning.className = 'hint';
+      warning.textContent = p.evidence_warning; card.appendChild(warning);
+    }
+    const lens = I8.find(item => item.name === p.pillar);
+    if(lens){
+      const reference = document.createElement('div'); reference.className = 'hint';
+      reference.textContent = 'Lens: The Impactful Eight, p. ' + lens.pages; card.appendChild(reference);
+    }
+    i8Cards.appendChild(card);
+  });
+  if((data.impactful_eight || []).length === 0){
+    i8Cards.innerHTML = '<div class="idle-note">No strong match for the Impactful Eight in this piece.</div>';
+  }
+
+  const l20 = data.learning_2_0 || {};
+  const readout = document.getElementById('l20-readout');
+  readout.innerHTML = '';
+
+  const connectionGrid = document.createElement('div'); connectionGrid.className = 'l20-grid';
+  function connectionCard(connection, label, primary){
+    if(!connection) return;
+    const card = document.createElement('div'); card.className = 'l20-block' + (primary ? ' primary' : '');
+    const kicker = document.createElement('div'); kicker.className = 'l20-kicker'; kicker.textContent = label;
+    const heading = document.createElement('h3'); heading.textContent = connection.belief || '';
+    const why = document.createElement('p'); why.textContent = connection.why || '';
+    card.append(kicker, heading, why);
+    if(connection.evidence_excerpt){
+      const evidence = document.createElement('div'); evidence.className = 'l20-evidence';
+      evidence.textContent = '“' + connection.evidence_excerpt + '”'; card.appendChild(evidence);
+    }else if(connection.evidence_warning){
+      const warning = document.createElement('div'); warning.className = 'hint'; warning.textContent = connection.evidence_warning; card.appendChild(warning);
+    }
+    connectionGrid.appendChild(card);
+  }
+  connectionCard(l20.primary_connection, 'Primary connection', true);
+  connectionCard(l20.supporting_connection, 'Supporting connection', false);
+  if(!connectionGrid.children.length){
+    const empty = document.createElement('div'); empty.className = 'idle-note'; empty.textContent = 'No material Learning 2.0 connection found.'; connectionGrid.appendChild(empty);
+  }
+  readout.appendChild(connectionGrid);
+
+  if((l20.strategic_gaps || []).length){
+    const section = document.createElement('div'); section.className = 'l20-section';
+    const heading = document.createElement('h3'); heading.textContent = 'Strategic gaps implicated';
+    const list = document.createElement('div'); list.className = 'l20-gap-list';
+    l20.strategic_gaps.forEach(item => {
+      const gap = document.createElement('div'); gap.className = 'l20-gap';
+      const name = document.createElement('strong'); name.textContent = item.gap || '';
+      const insight = document.createElement('p'); insight.textContent = item.insight || '';
+      gap.append(name, insight);
+      if(item.evidence_excerpt){ const evidence = document.createElement('div'); evidence.className = 'l20-evidence'; evidence.textContent = '“' + item.evidence_excerpt + '”'; gap.appendChild(evidence); }
+      else if(item.evidence_warning){ const warning = document.createElement('div'); warning.className = 'hint'; warning.textContent = item.evidence_warning; gap.appendChild(warning); }
+      list.appendChild(gap);
+    });
+    section.append(heading, list); readout.appendChild(section);
+  }
+
+  for(const [label, value] of [['Tension or challenge', l20.tension], ['Strategic implication', l20.strategic_implication]]){
+    const box = document.createElement('div'); box.className = 'strategy-box';
+    const title = document.createElement('strong'); title.textContent = label;
+    const body = document.createElement('p'); body.textContent = value || '';
+    box.append(title, body); readout.appendChild(box);
+  }
+
+  const actions = document.createElement('div'); actions.className = 'action-grid';
+  for(const [label, value] of [['SAY', l20.say], ['STUDY', l20.study], ['BUILD', l20.build]]){
+    const card = document.createElement('div'); card.className = 'action-card';
+    const title = document.createElement('strong'); title.textContent = label;
+    const body = document.createElement('p'); body.textContent = value || '';
+    card.append(title, body); actions.appendChild(card);
+  }
+  readout.appendChild(actions);
+}
+</script>
+</body>
+</html>

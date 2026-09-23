@@ -1,0 +1,36 @@
+{
+  "version": "User-supplied reference PDFs, September 2026",
+  "sources": {
+    "impactful_eight": {"title": "The Impactful Eight", "file": "The Impactful Eight 2026.pdf", "pages": "1–3"},
+    "learning_2_0": {"title": "Learning 2.0: A teaching and learning vision for Instructure's strategy", "file": "Learning 2.0_ A Vision for the Future of Learning 1.pdf", "author": "Melissa Loble, Chief Academic Officer", "date": "August 2026", "pages": "1–9"}
+  },
+  "impactful_eight": [
+    {"name": "Operational efficiency and effectiveness", "def": "Reduce administrative friction, streamline and unify workflows, and free educators and staff for teaching and learning. Modern platforms, cloud infrastructure, and automation support institutional resilience, financial sustainability, adaptability, and strategic growth.", "pages": "1"},
+    {"name": "The science of learning", "def": "Ground teaching and learning design in cognitive psychology, motivation, memory, and research on how humans learn. Include mental health and emotional safety as influences on cognition and long-term memory; improve understanding, retention, engagement, and consistent educational practice.", "pages": "1"},
+    {"name": "Education and industry partnerships", "def": "Connect employer needs with educational programs and authentic experiences to improve workforce readiness and employment pathways. Include internships, apprenticeships, and credentials co-designed with industry.", "pages": "1–2"},
+    {"name": "Assessment lifecycle", "def": "Connect outcomes, curriculum design, measurement, feedback, and program-level insights in a continuous assessment cycle. Support progress monitoring, equity, reflection, self-regulation, timely instructional decisions, and actionable evidence aligned with institutional goals.", "pages": "2"},
+    {"name": "Lifelong learning", "def": "Support recurring reskilling, upskilling, and career changes across a person's life through flexible programs, stackable credentials, accessible online pathways, and a growth mindset. Enable people to return as their goals evolve and strengthen community and employer relationships.", "pages": "2"},
+    {"name": "Recognition of learning", "def": "Treat recognition as a recurring milestone and learning practice that links formal and informal experiences, knowledge, practice, credentials, and opportunities. Support reflection and engagement while credentials and portfolios make capability visible to employers and institutions, enabling jobs, advancement, and further learning.", "pages": "2–3"},
+    {"name": "Generative AI", "def": "Use generative AI intentionally in content creation, learner support, educational design, course development, and operations. Reduce workload, surface insights, and enable mentoring while prioritizing transparency, ethics, sound learning principles, human oversight, and AI literacy.", "pages": "3"},
+    {"name": "Evidence-based design", "def": "Build strategies, digital ecosystems, programs, and learning environments using validated research and results contextualized to the community. Combine learning science, data analysis, and evaluation in a continuous measure, analyze, and improve cycle that guides investment and demonstrates improved learner outcomes.", "pages": "3"}
+  ],
+  "beliefs": [
+    {"name": "Learning is personal", "def": "Adapt learning to individual pace, skill level, interests, goals, and needs. Personalization includes accessibility and support for disabilities and neurodivergence, accounting for who learners are and how they participate.", "pages": "5"},
+    {"name": "Learning needs people", "def": "Use technology to enable meaningful exchanges and make room for relationships, judgment, and care. Amplify educator expertise, connect communities of practice, and help peers collaborate, engage, and build social capital.", "pages": "5"},
+    {"name": "Learning earns you trust", "def": "Make progress visible, supported by evidence, and recognized in ways that have real value for learners, parents, and employers.", "pages": "5"},
+    {"name": "Learning proves itself", "def": "Judge learning by demonstrated skills, competencies, and behaviors rather than content exposure or time spent. Align what learners can do with the needs of employers, the market, and society.", "pages": "5"},
+    {"name": "Learning never stops", "def": "Make learning continuous, available when needed, and integrated into work and life beyond a diploma.", "pages": "5"}
+  ],
+  "gaps": [
+    {"name": "Experiential Learning at Scale", "def": "Make learning by doing with real problems and stakes available at scale. Scenario-based, adaptive, personalized experiences enabled by AI can overcome historical dependence on heavy content investment, physical presence, and institutional effort.", "pages": "4"},
+    {"name": "Authentic Assessment", "def": "Assess real skills and behaviors rather than easy-to-automate task completion. Develop tools for performance evidence such as video of practical technique and rubric-based oral reasoning, with educators retaining final judgment.", "pages": "4"},
+    {"name": "Protecting Cognitive Struggle", "def": "Keep meaningful thinking, low-stakes failure, and effortful practice in learning so AI supports thinking rather than replacing it. Make the learner's process visible, since judgment and human capacities emerge through the work as well as its final output.", "pages": "4"}
+  ],
+  "learning_2_0_context": [
+    {"pages": "2–3", "text": "The vision combines experiential, social, continuous learning toward real academic, workforce, and societal outcomes. Develop discipline-specific skills together with judgment, resilience, adaptability, metacognition, and collaboration."},
+    {"pages": "3, 6", "text": "The deliberate middle tests existing structures against learning science, today's learning environment, and workforce needs. Use the five beliefs as decision criteria; their expression varies across K-12, higher education, and corporate learning."},
+    {"pages": "6–7", "text": "Operationalization uses four strategic pillars: Strengthen Our Learning Core (visible cognitive process); Advance the Full Learner Journey (portable evidence-backed credentials and demonstrated mastery); Establish Platform Value (connected tools, learner choice of entry point, and personalization across the ecosystem); Empower Every Learner (multiple ways to demonstrate mastery, including outside formal programs). These are distinct from the Impactful Eight and the five beliefs."},
+    {"pages": "6", "text": "Canvas, Parchment, Mastery, and agentic experiences are possible entry points into a shared foundation with real-time visibility into learner performance and needs; no single entry point should be assumed."},
+    {"pages": "7", "text": "Proposed investment areas also include a social and community layer, AI literacy taught explicitly without offloading thinking, and deliberate development and assessment of judgment, resilience, and adaptability."}
+  ]
+}
